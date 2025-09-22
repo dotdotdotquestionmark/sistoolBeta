@@ -1,0 +1,6 @@
+C:/Users/syw20/STM32CubeIDE/workspace_1.19.0/SISToolBetaControllerV3/build/Debug/CMakeFiles/SISToolBetaControllerV3.dir
+C:/Users/syw20/STM32CubeIDE/workspace_1.19.0/SISToolBetaControllerV3/build/Debug/CMakeFiles/edit_cache.dir
+C:/Users/syw20/STM32CubeIDE/workspace_1.19.0/SISToolBetaControllerV3/build/Debug/CMakeFiles/rebuild_cache.dir
+C:/Users/syw20/STM32CubeIDE/workspace_1.19.0/SISToolBetaControllerV3/build/Debug/cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir
+C:/Users/syw20/STM32CubeIDE/workspace_1.19.0/SISToolBetaControllerV3/build/Debug/cmake/stm32cubemx/CMakeFiles/edit_cache.dir
+C:/Users/syw20/STM32CubeIDE/workspace_1.19.0/SISToolBetaControllerV3/build/Debug/cmake/stm32cubemx/CMakeFiles/rebuild_cache.dir
