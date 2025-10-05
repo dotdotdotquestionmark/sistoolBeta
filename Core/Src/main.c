@@ -110,43 +110,42 @@ void inputHandler(){
       HAL_UART_Transmit_DMA(&huart2, (uint8_t*)successMsg, strlen(successMsg));
       //uint32_t TARGET = 0;
 
-      int SPEED;
-      int ANGLE = RxData[2];
-      //char angleTen[] = RxData[3];
-      // char angleOne[] = RxData[4];
+      char Speed[16] = {0};
+      char Angle[16] = {0};
 
-      // int ANGLEHUNDRED = atoi(angleHundred);
-      // int ANGLETEN = atoi(angleTen);
-      // int ANGLEONE = atoi(angleOne);
+      strncpy(Angle, RxData + 2, 3);
+      strncpy(Speed, RxData + 4, 3);
 
-      //int ANGLE = 0;//ANGLEHUNDRED*100+ANGLETEN*10+ANGLEONE;
-      // atoi(ANGLE);
-      // atoi(SPEED);
+      int ANGLE = atoi(Angle);
+      int SPEED = atoi(Speed);
 
       if(RxData[1] == '1'){
         motor1.Angle = ANGLE;
         motor1.Speed = SPEED;
         char M1Detection[23] = "M1 was found, Heyyyy!\r\n";
         //HAL_UART_Transmit_DMA(&huart2, (uint8_t*)M1Detection, strlen(M1Detection));
-        int cycles = 1;
+        int cycles = ANGLE;
+
         for(int i = 0; i < cycles; i++){
           HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);
-          HAL_Delay(200);
+          HAL_Delay(50);
           HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
-          HAL_Delay(200);
+          HAL_Delay(50);
         }
+
       }
       if(RxData[1] == '2'){
         motor2.Angle = ANGLE;
         motor2.Speed = SPEED;
         char M2Detection[23] = "M2 was found, Heyyyy!\r\n";
         //HAL_UART_Transmit_DMA(&huart2, (uint8_t*)M2Detection, strlen(M2Detection));
-        int cycles = 2;
+        int cycles = ANGLE;
+
         for(int i = 0; i < cycles; i++){
           HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);
-          HAL_Delay(200);
+          HAL_Delay(10);
           HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
-          HAL_Delay(200);
+          HAL_Delay(10);
         }
       }
       if(RxData[1] == '3'){
@@ -154,13 +153,15 @@ void inputHandler(){
         motor3.Speed = SPEED;
         char M3Detection[23] = "M3 was found, Heyyyy!\r\n";
         //HAL_UART_Transmit_DMA(&huart2, (uint8_t*)M3Detection, strlen(M3Detection));
-        int cycles = 3;
-        for(int i = 0; i < cycles; i++){
-          HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);
-          HAL_Delay(200);
-          HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
-          HAL_Delay(200);
-        }
+        int cycles = ANGLE;
+
+        // for(int i = 0; i < cycles; i++){
+        //   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);
+        //   HAL_Delay(20);
+        //   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
+        //   HAL_Delay(20);
+        // }
+
       }
       
     }
@@ -187,26 +188,25 @@ uint32_t micros(){
 }
 
 
+//might obsolete this section
 void motorDriver(struct MOTOR *motor){
   // adjust pulse rate of each motor
   // lets say hypothetically you get a micros function working 
   // call this when you get 
   int ANGLE = motor->Angle;
-  int additionalPULSE = ANGLE*11;
+  float additionalPULSE = (float)ANGLE*7.4;
   char printableANGLE[8];
   itoa (ANGLE, printableANGLE, 8);
-  uint32_t PulseInterval = 2000+(uint32_t)additionalPULSE; 
-  uint32_t CycleInterval = 20000; //time for 50 hz
+  uint32_t PulseInterval = 310+(uint32_t)additionalPULSE; 
+  uint32_t CycleInterval = 20000-1; //time for 50 hz
   uint32_t currentTime = micros();
   uint16_t DATAPIN = motor->DataPin;
   if ((currentTime - cycleStart)>CycleInterval){
     HAL_GPIO_WritePin(GPIOA, DATAPIN, GPIO_PIN_SET);
-    //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
     cycleStart = currentTime;
   }
   if ((currentTime - cycleStart)>PulseInterval){
     HAL_GPIO_WritePin(GPIOA, DATAPIN, GPIO_PIN_RESET);
-    //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
   }
 
 }
@@ -271,7 +271,7 @@ int main(void)
     inputHandler();
     
     //motorDriver(&motor1);
-    // motorDriver(&motor2);
+    //motorDriver(&motor2);
     motorDriver(&motor3);
 
     //HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_3);
