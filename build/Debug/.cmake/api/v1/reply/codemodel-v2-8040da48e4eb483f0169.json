@@ -60,14 +60,14 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "SISToolBetaControllerV3::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-SISToolBetaControllerV3-Debug-47a50e281c116c665eca.json",
+					"jsonFile" : "target-SISToolBetaControllerV3-Debug-edb21bdac7b275dcabbc.json",
 					"name" : "SISToolBetaControllerV3",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 1,
 					"id" : "STM32_Drivers::@768a070a0fe75716b479",
-					"jsonFile" : "target-STM32_Drivers-Debug-000358bfe47693141eef.json",
+					"jsonFile" : "target-STM32_Drivers-Debug-c5e9474d131d0effc12e.json",
 					"name" : "STM32_Drivers",
 					"projectIndex" : 0
 				}

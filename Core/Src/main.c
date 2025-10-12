@@ -48,6 +48,8 @@ extern __IO uint32_t uwTick;
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+TIM_HandleTypeDef htim2;
+
 UART_HandleTypeDef huart2;
 DMA_HandleTypeDef hdma_usart2_rx;
 DMA_HandleTypeDef hdma_usart2_tx;
@@ -62,7 +64,6 @@ volatile uint8_t ActiveCommand = 0;
 
 unsigned long blinkInterval;
 uint8_t *inputData;
-uint32_t cycleStart = 0;
 
 /* USER CODE END PV */
 
@@ -71,13 +72,19 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
 
 typedef struct MOTOR {
   int MotorNumber;
   int Angle;
   int Speed;
+  int TargetAngle;
   uint16_t DataPin;
+  uint32_t cycleStart;
+  uint32_t lastUpdate;
+
+  //uint32_t channel;
 };
 
 struct MOTOR motor1;
@@ -86,20 +93,29 @@ struct MOTOR motor3;
 
 void motorInitializer(){
   motor1.MotorNumber = 1;
-  motor1.Angle = 0;
+  motor1.Angle = 140;
   motor1.Speed = 5;
   motor1.DataPin = GPIO_PIN_6;
+  motor1.cycleStart = 10;
+  motor1.TargetAngle = 160;
+  motor1.lastUpdate = 0;
 
   motor2.MotorNumber = 2;
-  motor2.Angle = 0;
+  motor2.Angle = 180;
   motor2.Speed = 5;
   motor2.DataPin = GPIO_PIN_7;
+  motor2.cycleStart = 10;
+  motor2.TargetAngle = 70;
+  motor2.lastUpdate = 0;
 
   // thissun for the pincer
   motor3.MotorNumber = 3;
-  motor3.Angle = 0;
+  motor3.Angle = 50;
   motor3.Speed = 5;
   motor3.DataPin = GPIO_PIN_8;
+  motor3.cycleStart = 10;
+  motor3.TargetAngle = 50;
+  motor3.lastUpdate = 0;
 }
 
 void inputHandler(){
@@ -107,7 +123,7 @@ void inputHandler(){
     ActiveCommand = 0;
     if(RxData[0] == 'M'){
       char successMsg[] = "First character is 'M'! Hello there!\r\n";
-      HAL_UART_Transmit_DMA(&huart2, (uint8_t*)successMsg, strlen(successMsg));
+      //HAL_UART_Transmit_DMA(&huart2, (uint8_t*)successMsg, strlen(successMsg));
       //uint32_t TARGET = 0;
 
       char Speed[16] = {0};
@@ -120,40 +136,40 @@ void inputHandler(){
       int SPEED = atoi(Speed);
 
       if(RxData[1] == '1'){
-        motor1.Angle = ANGLE;
+        motor1.TargetAngle = ANGLE;
         motor1.Speed = SPEED;
         char M1Detection[23] = "M1 was found, Heyyyy!\r\n";
         //HAL_UART_Transmit_DMA(&huart2, (uint8_t*)M1Detection, strlen(M1Detection));
-        int cycles = ANGLE;
+        //int cycles = ANGLE;
 
-        for(int i = 0; i < cycles; i++){
-          HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);
-          HAL_Delay(50);
-          HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
-          HAL_Delay(50);
-        }
+        // for(int i = 0; i < cycles; i++){
+        //   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);
+        //   HAL_Delay(50);
+        //   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
+        //   HAL_Delay(50);
+        // }
 
       }
       if(RxData[1] == '2'){
-        motor2.Angle = ANGLE;
+        motor2.TargetAngle = ANGLE;
         motor2.Speed = SPEED;
         char M2Detection[23] = "M2 was found, Heyyyy!\r\n";
         //HAL_UART_Transmit_DMA(&huart2, (uint8_t*)M2Detection, strlen(M2Detection));
-        int cycles = ANGLE;
+        //int cycles = ANGLE;
 
-        for(int i = 0; i < cycles; i++){
-          HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);
-          HAL_Delay(10);
-          HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
-          HAL_Delay(10);
-        }
+        // for(int i = 0; i < cycles; i++){
+        //   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);
+        //   HAL_Delay(10);
+        //   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
+        //   HAL_Delay(10);
+        // }
       }
       if(RxData[1] == '3'){
-        motor3.Angle = ANGLE;
+        motor3.TargetAngle = ANGLE;
         motor3.Speed = SPEED;
         char M3Detection[23] = "M3 was found, Heyyyy!\r\n";
         //HAL_UART_Transmit_DMA(&huart2, (uint8_t*)M3Detection, strlen(M3Detection));
-        int cycles = ANGLE;
+        //int cycles = ANGLE;
 
         // for(int i = 0; i < cycles; i++){
         //   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);
@@ -163,7 +179,7 @@ void inputHandler(){
         // }
 
       }
-      
+      RxData[64] = "";
     }
   }
 }
@@ -190,22 +206,45 @@ uint32_t micros(){
 
 //might obsolete this section
 void motorDriver(struct MOTOR *motor){
+  uint32_t currentTime = micros();
   // adjust pulse rate of each motor
   // lets say hypothetically you get a micros function working 
   // call this when you get 
   int ANGLE = motor->Angle;
-  float additionalPULSE = (float)ANGLE*7.4;
-  char printableANGLE[8];
-  itoa (ANGLE, printableANGLE, 8);
-  uint32_t PulseInterval = 310+(uint32_t)additionalPULSE; 
-  uint32_t CycleInterval = 20000-1; //time for 50 hz
-  uint32_t currentTime = micros();
+  int TARGETAngle = motor->TargetAngle;
+  //int SPEED = 100;
+  uint32_t lastUpdate = motor->lastUpdate;
+
+  // implement a speed setting
+
   uint16_t DATAPIN = motor->DataPin;
-  if ((currentTime - cycleStart)>CycleInterval){
-    HAL_GPIO_WritePin(GPIOA, DATAPIN, GPIO_PIN_SET);
-    cycleStart = currentTime;
+  // speed settings pause for now
+
+  if((currentTime - lastUpdate) > 20000){
+      if(ANGLE>TARGETAngle){
+        ANGLE -= 5;
+        motor->Angle = ANGLE;
+      }
+      if(ANGLE<TARGETAngle){
+        ANGLE += 5;
+        motor->Angle = ANGLE;
+      }
+    
+    motor->lastUpdate = currentTime;
+
   }
-  if ((currentTime - cycleStart)>PulseInterval){
+
+  float additionalPULSE = (double)ANGLE*(7.1);
+  //char printableANGLE[8];
+  //itoa(ANGLE, printableANGLE, 8);
+  uint32_t PulseInterval = 450+(uint32_t)additionalPULSE; 
+  uint32_t CycleInterval = 20000; //time for 50 hz
+
+  if ((currentTime - motor->cycleStart)>CycleInterval){
+    HAL_GPIO_WritePin(GPIOA, DATAPIN, GPIO_PIN_SET);
+    motor->cycleStart = currentTime;
+  }
+  if ((currentTime - motor->cycleStart)>PulseInterval){
     HAL_GPIO_WritePin(GPIOA, DATAPIN, GPIO_PIN_RESET);
   }
 
@@ -251,8 +290,13 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_USART2_UART_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   //HAL_UART_Receive_IT(&huart2, RxData, 32);
+  //HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+  //HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
+  //HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_4);
+
 
   //HAL_UART_Receive_DMA(&huart2, RxData, 32);
 
@@ -270,23 +314,15 @@ int main(void)
     // look for data processing flag
     inputHandler();
     
-    //motorDriver(&motor1);
-    //motorDriver(&motor2);
+    motorDriver(&motor1);
+    motorDriver(&motor2);
     motorDriver(&motor3);
-
-    //HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_3);
-
-    //HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
 
     //char tx_buffer[50];
     
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    // HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_SET);
-    // HAL_Delay(10);
-    // HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
-    // HAL_Delay(10);
 
   }
   /* USER CODE END 3 */
@@ -333,6 +369,51 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 0;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 4294967295;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+
 }
 
 /**
